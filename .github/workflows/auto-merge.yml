@@ -29,6 +29,19 @@ jobs:
 
             for (const pr of prs) {
               try {
+                const files = await github.paginate(github.rest.pulls.listFiles, {
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  per_page: 100
+                });
+                const skillNames = [...new Set(
+                  files.flatMap((file) => {
+                    const match = file.filename.match(/^skills\/([a-z0-9-]+)\/SKILL\.md$/);
+                    return match ? [match[1]] : [];
+                  })
+                )];
+
                 await github.rest.pulls.merge({
                   owner,
                   repo,
@@ -40,7 +53,9 @@ jobs:
                   owner,
                   repo,
                   issue_number: pr.number,
-                  body: `✅ Skill is now live at https://askills.dev/s/${pr.head.ref.split('/')[1] || ''}`
+                  body: skillNames.length === 1
+                    ? `✅ Skill is now live at https://askills.dev/s/${skillNames[0]}`
+                    : `✅ Skills are now live:\n${skillNames.map((name) => `- https://askills.dev/s/${name}`).join('\n')}`
                 });
               } catch (error) {
                 core.warning(`Unable to merge PR #${pr.number}: ${error.message}`);
